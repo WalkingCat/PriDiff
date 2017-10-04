@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="pri_parser.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="strutils.h" />
+    <ClInclude Include="targetver.h" />
+    <ClInclude Include="fileutils.h" />
+    <ClInclude Include="file_reader.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="pri_parser.cpp" />
+    <ClCompile Include="pridiff.cpp" />
+    <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="strutils.cpp" />
+    <ClCompile Include="fileutils.cpp" />
+  </ItemGroup>
+</Project>
