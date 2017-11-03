@@ -208,7 +208,7 @@ pri_data_t pri::parse_pri_file(const wchar_t* filename) {
 				uint16_t fullPathLength;
 				bool isScope;
 				bool name_is_ascii;
-				uint16_t name_offset;
+				uint32_t name_offset;
 				uint16_t index;
 			};
 			vector<ScopeAndItemInfo> scope_and_item_infos;
@@ -219,7 +219,7 @@ pri_data_t pri::parse_pri_file(const wchar_t* filename) {
 				wchar_t uppercaseFirstChar = file.read<wchar_t>();
 				auto nameLength2 = file.read<BYTE>();
 				auto flags = file.read<BYTE>();
-				scopeAndItemInfo.name_offset = file.read<uint16_t>() | ((flags & 0xF) << 16);
+				scopeAndItemInfo.name_offset = file.read<uint16_t>() | uint32_t((flags & 0xF) << 16);
 				scopeAndItemInfo.index = file.read<uint16_t>();
 				scopeAndItemInfo.isScope = (flags & 0x10) != 0;
 				scopeAndItemInfo.name_is_ascii = (flags & 0x20) != 0;
