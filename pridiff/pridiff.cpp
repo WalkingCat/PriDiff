@@ -146,7 +146,7 @@ int wmain(int argc, wchar_t* argv[])
 					bool printed_res_name = false;
 					auto print_res_name = [&](const wchar_t prefix) {
 						if (!printed_res_name) {
-							print_file_name((old_file == nullptr) ? L'+' : L'*');
+							print_file_name(L'*');
 							fwprintf_s(out, L"  %wc %ws\n", prefix, res_name.c_str());
 							printed_res_name = true;
 						}
@@ -164,7 +164,7 @@ int wmain(int argc, wchar_t* argv[])
 					diff_maps(new_res->values, old_res ? old_res->values : map<wstring, wstring>(),
 						[&](const wstring& qualifier, const wstring* new_value, const wstring* old_value) {
 							auto print_res_value = [&](const wchar_t prefix, bool old = false) {
-								print_res_name((old_res == nullptr) ? L'+' : L'*');
+								print_res_name(L'*');
 								auto value_text = old ? *old_value : *new_value;
 								if (!qualifier.empty()) {
 									value_text = L"[" + qualifier + L"]" + value_text;
