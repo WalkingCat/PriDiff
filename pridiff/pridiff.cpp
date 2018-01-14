@@ -51,11 +51,14 @@ std::map<std::wstring, pri_resource_t> get_pri_resources(const wstring& pri_file
 
 int wmain(int argc, wchar_t* argv[])
 {
+	auto out = stdout;
+	setmode_to_utf16(out);
+
 	int options = diffNone;
 	const wchar_t* err_arg = nullptr;
 	wstring new_files_pattern, old_files_pattern;
 
-	printf_s("\n PriDiff v0.1 https://github.com/WalkingCat/PriDiff\n\n");
+	fwprintf_s(out, L"\n PriDiff v0.1 https://github.com/WalkingCat/PriDiff\n\n");
 
 	for (int i = 1; i < argc; ++i) {
 		const wchar_t* arg = argv[i];
@@ -91,9 +94,6 @@ int wmain(int argc, wchar_t* argv[])
 		print_usage();
 		return 0;
 	}
-
-	auto out = stdout;
-	setmode_to_utf16(out);
 
 	auto new_files = find_files(new_files_pattern.c_str());
 	auto old_files = find_files(old_files_pattern.c_str());
@@ -207,6 +207,17 @@ map<wstring, wstring> find_files(const wchar_t * pattern)
 	return ret;
 }
 
+std::wstring get_scope_name(pri::resource_map_scope& scope, pri::hierarchical_schema_section_t& section) {
+	auto scope_name = scope.name;
+	auto parent_scope_index = scope.parent_scope_index;
+	while (parent_scope_index > 0) {
+		auto& parent_scope = section.resource_map_scopes[parent_scope_index];
+		scope_name = parent_scope.name + L"/" + scope_name;
+		parent_scope_index = parent_scope.parent_scope_index;
+	}
+	return scope_name;
+}
+
 std::map<std::wstring, pri_resource_t> get_pri_resources(const wstring& pri_file) {
 	std::map<std::wstring, pri_resource_t> pri_resources;
 
@@ -215,7 +226,7 @@ std::map<std::wstring, pri_resource_t> get_pri_resources(const wstring& pri_file
 	for (auto& hierarchical_schema_section : pri_data.hierarchical_schema_sections) {
 		for (auto& item_pair : hierarchical_schema_section.second.resource_map_items) {
 			auto& scope = hierarchical_schema_section.second.resource_map_scopes[item_pair.second.scope_index];
-			pri_resources[scope.name + L"/" + item_pair.second.name].values.clear();
+			pri_resources[get_scope_name(scope, hierarchical_schema_section.second) + L"/" + item_pair.second.name].values.clear();
 		}
 	}
 
@@ -225,7 +236,7 @@ std::map<std::wstring, pri_resource_t> get_pri_resources(const wstring& pri_file
 			auto& hierarchical_schema_section = pri_data.hierarchical_schema_sections[candidate_set.schema_section_index];
 			auto& item = hierarchical_schema_section.resource_map_items[candidate_set.resource_map_item_index];
 			auto& scope = hierarchical_schema_section.resource_map_scopes[item.scope_index];
-			auto& pri_resource = pri_resources[scope.name + L"/" + item.name];
+			auto& pri_resource = pri_resources[get_scope_name(scope, hierarchical_schema_section) + L"/" + item.name];
 			for (auto& candidate : candidate_set.candidates) {
 				wstring qualifier_text; //TODO
 				wstring value_text;

@@ -273,13 +273,15 @@ pri_data_t pri::parse_pri_file(const wchar_t* filename) {
 					}
 				}
 
-				if (scope_and_item_infos[i].isScope) {
-					auto& scope = section.resource_map_scopes[scope_and_item_infos[i].index];
+				auto& info = scope_and_item_infos[i];
+				if (info.isScope) {
+					auto& scope = section.resource_map_scopes[info.index];
+					scope.parent_scope_index = scope_and_item_infos[info.parent].index;
 					scope.name = name;
 				} else {
-					auto& item = section.resource_map_items[scope_and_item_infos[i].index];
+					auto& item = section.resource_map_items[info.index];
 					item.name = name;
-					item.scope_index = scope_and_item_infos[i].parent;
+					item.scope_index = scope_and_item_infos[info.parent].index;
 				}
 			}
 		} else if ((id == "[mrm_res_map__]\0") || (id == "[mrm_res_map2_]\0")) {

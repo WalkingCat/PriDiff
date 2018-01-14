@@ -77,6 +77,7 @@ namespace pri {
 	};
 
 	struct resource_map_scope {
+		uint16_t parent_scope_index;
 		std::wstring name;
 	};
 	struct resource_map_item {
