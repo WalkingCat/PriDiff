@@ -137,6 +137,10 @@ int wmain(int argc, wchar_t* argv[])
 				return;
 			}
 
+			if (old_file == nullptr) {
+				print_file_name('+');
+			}
+
 			diff_maps(get_pri_resources(*new_file), (old_file != nullptr) ? get_pri_resources(*old_file) : map<wstring, pri_resource_t>(),
 				[&](const wstring& res_name, const pri_resource_t* new_res, const pri_resource_t* old_res) {
 					bool printed_res_name = false;
@@ -151,6 +155,10 @@ int wmain(int argc, wchar_t* argv[])
 					if (new_res == nullptr) {
 						print_res_name('-');
 						return;
+					}
+
+					if (old_res == nullptr) {
+						print_res_name('+');
 					}
 
 					diff_maps(new_res->values, old_res ? old_res->values : map<wstring, wstring>(),
