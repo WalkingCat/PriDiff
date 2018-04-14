@@ -41,7 +41,6 @@ void print_usage() {
 	}
 }
 
-map<wstring, wstring> find_files(const wchar_t* pattern);
 template<typename TKey, typename TValue, typename TFunc> void diff_maps(const map<TKey, TValue>& new_map, const map<TKey, TValue>& old_map, TFunc& func);
 struct pri_resource_t {
 	std::map<std::wstring, std::wstring> values;
@@ -195,25 +194,6 @@ int wmain(int argc, wchar_t* argv[])
 	return 0;
 }
 
-map<wstring, wstring> find_files(const wchar_t * pattern)
-{
-	map<wstring, wstring> ret;
-	wchar_t path[MAX_PATH] = {};
-	wcscpy_s(path, pattern);
-	WIN32_FIND_DATA fd;
-	HANDLE find = ::FindFirstFile(pattern, &fd);
-	if (find != INVALID_HANDLE_VALUE) {
-		do {
-			if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0) {
-				PathRemoveFileSpec(path);
-				PathCombine(path, path, fd.cFileName);
-				ret[fd.cFileName] = path;
-			}
-		} while (::FindNextFile(find, &fd));
-		::FindClose(find);
-	}
-	return ret;
-}
 
 std::wstring get_scope_name(pri::resource_map_scope& scope, pri::hierarchical_schema_section_t& section) {
 	auto scope_name = scope.name;
