@@ -61,12 +61,12 @@ wstring generate_key_from_manifest(const wstring& parent, const wstring& dir) {
 	return ret;
 }
 
-map<wstring, map<wstring, wstring>> find_files_wcs(const wstring & directory)
+map<wstring, map<wstring, wstring>> find_files_wcs(const wstring & directory, const std::wstring& file_pattern)
 {
 	map<wstring, map<wstring, wstring>> ret;
 
 	// ex. amd64_wvms_vsft.inf.resources_31bf3856ad364e35_10.0.14393.0_en-us_f32e284e2439eb0bs
-	wregex re(L"(.*)_[0-9a-f]+_[0-9\\.]+_[0-9a-z-]+_[0-9a-f]+");
+	wregex re(L"(.*)_[0-9a-f]+_[0-9\\.]+_([0-9a-z-]+)_[0-9a-f]+");
 	wsmatch match;
 
 	wchar_t path[MAX_PATH] = {};
@@ -80,12 +80,16 @@ map<wstring, map<wstring, wstring>> find_files_wcs(const wstring & directory)
 				wstring file(fd.cFileName);
 				if (regex_match(file, match, re)) {
 					auto key = generate_key_from_manifest(directory, file);
-					if (key.empty()) key = match[1].str(); // fallback
+					if (key.empty()) { // fallback
+						key = match[1].str();
+						wstring lang = match[2].str();
+						if (lang != L"none") key += L"_" + lang;
+					}
 
 					PathRemoveFileSpec(path);
 					PathCombine(path, path, fd.cFileName);
 
-					PathAppend(path, L"*");
+					PathAppend(path, file_pattern.c_str());
 					auto& files = ret[key.c_str()];
 					const auto& found_files = find_files(path);
 					files.insert(found_files.begin(), found_files.end());
@@ -96,4 +100,19 @@ map<wstring, map<wstring, wstring>> find_files_wcs(const wstring & directory)
 		::FindClose(find);
 	}
 	return ret;
+}
+
+std::map<std::wstring, std::map<std::wstring, std::wstring>> find_files_wcs_ex(const std::wstring & pattern, const std::wstring& default_file_pattern)
+{
+	wstring directory, file_pattern = default_file_pattern;
+	if (PathIsDirectoryW(pattern.c_str())) {
+		directory = pattern;
+	} else {
+		file_pattern = PathFindFileName(pattern.c_str());
+		auto dir = pattern;
+		PathRemoveFileSpec((LPWSTR)dir.data());
+		directory = dir;
+	}
+
+	return find_files_wcs(directory, file_pattern);
 }
