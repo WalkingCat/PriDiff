@@ -23,24 +23,25 @@ const struct { const wchar_t* arg; const wchar_t* arg_alt; const wchar_t* params
 };
 
 void print_usage() {
-	printf_s("\tUsage: pridiff [options]\n\n");
+	wprintf_s(L" Usage: pridiff [options]\n\n");
 	for (auto o = begin(cmd_options); o != end(cmd_options); ++o) {
-		if (o->arg != nullptr) printf_s("\t-%S", o->arg); else printf_s("\t");
+		if (o->arg != nullptr) wprintf_s(L" -%ws", o->arg); else wprintf_s(L" ");
 
 		int len = 0;
 		if (o->arg_alt != nullptr) {
 			len = wcslen(o->arg_alt);
-			printf_s("\t--%S", o->arg_alt);
-		} else printf_s("\t");
+			wprintf_s(L"\t--%ws", o->arg_alt);
+		} else wprintf_s(L"\t");
 
-		if (len < 6) printf_s("\t");
+		if (len < 6) wprintf_s(L"\t");
 
-		if (o->params_desc != nullptr) len += printf_s(" %S", o->params_desc);
+		if (o->params_desc != nullptr) len += wprintf_s(L" %ws", o->params_desc);
 
-		if (len < 14) printf_s("\t");
+		if (len < 14) wprintf_s(L"\t");
 
-		printf_s("\t: %S\n", o->description);
+		wprintf_s(L"\t: %ws\n", o->description);
 	}
+	wprintf_s(L"\n");
 }
 
 template<typename TKey, typename TValue, typename TFunc>
