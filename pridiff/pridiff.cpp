@@ -296,7 +296,7 @@ std::map<std::wstring, pri_resource_t> get_pri_resources(const wstring& pri_file
 								break;
 							case resource_value_type_t::Path:
 							case resource_value_type_t::String:
-								value_text = wstring((wchar_t*)data_item.data(), data_item.size());
+								value_text = wstring((wchar_t*)data_item.data(), data_item.size() / sizeof(wchar_t));
 								break;
 							case resource_value_type_t::EmbeddedData:
 								//TODO: calc sha1 hash
