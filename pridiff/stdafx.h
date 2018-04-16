@@ -8,6 +8,7 @@
 
 #include "..\witutils\find_files.h"
 #include "..\witutils\find_files_wcs.h"
+#include "..\witutils\diff_utils.h"
 
 #define WIN32_MEAN_AND_LEAN
 #include <Windows.h>

@@ -44,9 +44,6 @@ void print_usage() {
 	wprintf_s(L"\n");
 }
 
-template<typename TKey, typename TValue, typename TFunc>
-void diff_maps(const map<TKey, TValue>& new_map, const map<TKey, TValue>& old_map, TFunc& func = function<void()>());
-
 struct pri_resource_t {
 	std::map<std::wstring, std::wstring> values;
 };
@@ -324,39 +321,4 @@ std::map<std::wstring, pri_resource_t> get_pri_resources(const wstring& pri_file
 	} catch(...) {}
 
 	return pri_resources;
-}
-
-template<typename TKey, typename TValue, typename TFunc>
-void diff_maps(const map<TKey, TValue>& new_map, const map<TKey, TValue>& old_map, TFunc& func/* = function<void()>()*/)
-{
-	auto new_it = new_map.begin();
-	auto old_it = old_map.begin();
-
-	while ((new_it != new_map.end()) || (old_it != old_map.end())) {
-		int diff = 0;
-		if (new_it != new_map.end()) {
-			if (old_it != old_map.end()) {
-				if (new_it->first > old_it->first) {
-					diff = -1;
-				} else if (new_it->first < old_it->first) {
-					diff = 1;
-				}
-			} else diff = 1;
-		} else {
-			if (old_it != old_map.end())
-				diff = -1;
-		}
-
-		if (diff > 0) {
-			func(new_it->first, &new_it->second, nullptr);
-			++new_it;
-		} else if (diff < 0) {
-			func(old_it->first, nullptr, &old_it->second);
-			++old_it;
-		} else {
-			func(old_it->first, &new_it->second, &old_it->second);
-			++new_it;
-			++old_it;
-		}
-	}
 }

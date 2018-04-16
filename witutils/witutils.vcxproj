@@ -151,6 +151,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="diff_utils.h" />
     <ClInclude Include="find_files.h" />
     <ClInclude Include="find_files_wcs.h" />
     <ClInclude Include="stdafx.h" />
