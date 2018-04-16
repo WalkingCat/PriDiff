@@ -104,12 +104,11 @@ int wmain(int argc, wchar_t* argv[])
 				auto print_file_name = [&](const wchar_t prefix) {
 					if (!printed_file_name) {
 						if (callback) callback();
-						if (!printed_previous_file_name) {
+						if (printed_previous_file_name) {
 							fwprintf_s(out, L"\n");
-							printed_previous_file_name = true;
 						}
 						fwprintf_s(out, L"   %wc %ws\n", prefix, file_name.c_str());
-						printed_file_name = true;
+						printed_previous_file_name = printed_file_name = true;
 					}
 				};
 
