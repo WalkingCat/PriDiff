@@ -1,3 +1,3 @@
 #pragma once
 
-void setmode_to_utf16(FILE* file);
+void prepare_unicode_output();

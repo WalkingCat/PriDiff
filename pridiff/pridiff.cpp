@@ -22,22 +22,22 @@ const struct { const wchar_t* arg; const wchar_t* arg_alt; const wchar_t* params
 	{ nullptr,	L"wcs",				nullptr,		L"folder is Windows Component Store",	diffWcs },
 };
 
-void print_usage() {
-	wprintf_s(L" Usage: pridiff [options]\n\n");
+void print_usage(FILE* out) {
+	fwprintf_s(out, L" Usage: pridiff [options]\n\n");
 	for (auto o = begin(cmd_options); o != end(cmd_options); ++o) {
-		if (o->arg != nullptr) wprintf_s(L" -%ws", o->arg); else wprintf_s(L" ");
+		if (o->arg != nullptr) fwprintf_s(out, L" -%ws", o->arg); else fwprintf_s(out, L" ");
 
 		int len = 0;
 		if (o->arg_alt != nullptr) {
 			len = wcslen(o->arg_alt);
 			wprintf_s(L"\t--%ws", o->arg_alt);
-		} else wprintf_s(L"\t");
+		} else fwprintf_s(out, L"\t");
 
-		if (len < 6) wprintf_s(L"\t");
+		if (len < 6) fwprintf_s(out, L"\t");
 
-		if (o->params_desc != nullptr) len += wprintf_s(L" %ws", o->params_desc);
+		if (o->params_desc != nullptr) len += fwprintf_s(out, L" %ws", o->params_desc);
 
-		if (len < 14) wprintf_s(L"\t");
+		if (len < 14) fwprintf_s(out, L"\t");
 
 		wprintf_s(L"\t: %ws\n", o->description);
 	}
@@ -52,9 +52,9 @@ std::map<std::wstring, pri_resource_t> get_pri_resources(const wstring& pri_file
 
 int wmain(int argc, wchar_t* argv[])
 {
-	auto out = stdout;
-	setmode_to_utf16(out);
+	prepare_unicode_output();
 
+	auto out = stdout;
 	int options = diffNone;
 	const wchar_t* err_arg = nullptr;
 	wstring new_files_pattern, old_files_pattern;
@@ -63,9 +63,9 @@ int wmain(int argc, wchar_t* argv[])
 
 	for (int i = 1; i < argc; ++i) {
 		const wchar_t* arg = argv[i];
-		if ((arg[0] == '-') || ((arg[0] == '/'))) {
+		if ((arg[0] == L'-') || ((arg[0] == L'/'))) {
 			diff_options curent_option = diffNone;
-			if ((arg[0] == '-') && (arg[1] == '-')) {
+			if ((arg[0] == L'-') && (arg[1] == L'-')) {
 				for (auto o = begin(cmd_options); o != end(cmd_options); ++o) {
 					if ((o->arg_alt != nullptr) && (wcscmp(arg + 2, o->arg_alt) == 0)) { curent_option = o->options; }
 				}
@@ -91,8 +91,8 @@ int wmain(int argc, wchar_t* argv[])
 	}
 
 	if ((new_files_pattern.empty() && old_files_pattern.empty()) || (err_arg != nullptr) || (options & diffHelp)) {
-		if (err_arg != nullptr) printf_s("\tError in option: %S\n\n", err_arg);
-		print_usage();
+		if (err_arg != nullptr) fwprintf_s(out, L"\tError in option: %ws\n\n", err_arg);
+		print_usage(out);
 		return 0;
 	}
 
