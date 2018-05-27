@@ -25,23 +25,23 @@ const struct { const wchar_t* arg; const wchar_t* arg_alt; const wchar_t* params
 void print_usage(FILE* out) {
 	fwprintf_s(out, L" Usage: pridiff [options]\n\n");
 	for (auto o = begin(cmd_options); o != end(cmd_options); ++o) {
-		if (o->arg != nullptr) fwprintf_s(out, L" -%ws", o->arg); else fwprintf_s(out, L" ");
+		if (o->arg != nullptr) fwprintf_s(out, L" -%ls", o->arg); else fwprintf_s(out, L" ");
 
 		int len = 0;
 		if (o->arg_alt != nullptr) {
 			len = wcslen(o->arg_alt);
-			wprintf_s(L"\t--%ws", o->arg_alt);
+			fwprintf_s(out, L"\t--%ls", o->arg_alt);
 		} else fwprintf_s(out, L"\t");
 
 		if (len < 6) fwprintf_s(out, L"\t");
 
-		if (o->params_desc != nullptr) len += fwprintf_s(out, L" %ws", o->params_desc);
+		if (o->params_desc != nullptr) len += fwprintf_s(out, L" %ls", o->params_desc);
 
 		if (len < 14) fwprintf_s(out, L"\t");
 
-		wprintf_s(L"\t: %ws\n", o->description);
+		fwprintf_s(out, L"\t: %ls\n", o->description);
 	}
-	wprintf_s(L"\n");
+	fwprintf_s(out, L"\n");
 }
 
 struct pri_resource_t {
@@ -91,7 +91,7 @@ int wmain(int argc, wchar_t* argv[])
 	}
 
 	if ((new_files_pattern.empty() && old_files_pattern.empty()) || (err_arg != nullptr) || (options & diffHelp)) {
-		if (err_arg != nullptr) fwprintf_s(out, L"\tError in option: %ws\n\n", err_arg);
+		if (err_arg != nullptr) fwprintf_s(out, L"\tError in option: %ls\n\n", err_arg);
 		print_usage(out);
 		return 0;
 	}
@@ -107,7 +107,7 @@ int wmain(int argc, wchar_t* argv[])
 						if (printed_previous_file_name) {
 							fwprintf_s(out, L"\n");
 						}
-						fwprintf_s(out, L"   %wc %ws\n", prefix, file_name.c_str());
+						fwprintf_s(out, L"   %lc %ls\n", prefix, file_name.c_str());
 						printed_previous_file_name = printed_file_name = true;
 					}
 				};
@@ -127,7 +127,7 @@ int wmain(int argc, wchar_t* argv[])
 						auto print_res_name = [&](const wchar_t prefix) {
 							if (!printed_res_name) {
 								print_file_name(L'*');
-								fwprintf_s(out, L"     %wc %ws\n", prefix, res_name.c_str());
+								fwprintf_s(out, L"     %lc %ls\n", prefix, res_name.c_str());
 								printed_res_name = true;
 							}
 						};
@@ -149,7 +149,7 @@ int wmain(int argc, wchar_t* argv[])
 									if (!qualifier.empty()) {
 										value_text = L"[" + qualifier + L"]" + value_text;
 									}
-									fwprintf_s(out, L"       %wc %ws\n", prefix, value_text.c_str());
+									fwprintf_s(out, L"       %lc %ls\n", prefix, value_text.c_str());
 								};
 
 								if (new_value == nullptr) {
@@ -159,8 +159,8 @@ int wmain(int argc, wchar_t* argv[])
 
 								if (old_value) {
 									if (*new_value != *old_value) {
-										print_res_value('+', false);
-										print_res_value('-', true);
+										print_res_value('*', false);
+										print_res_value('$', true);
 									}
 								} else {
 									print_res_value('+', false);
@@ -174,13 +174,13 @@ int wmain(int argc, wchar_t* argv[])
 	};
 
 	if ((options& diffWcs) == 0) {
-		fwprintf_s(out, L" new files: %ws", new_files_pattern.c_str());
+		fwprintf_s(out, L" new files: %ls", new_files_pattern.c_str());
 		auto new_files = find_files(new_files_pattern.c_str());
-		fwprintf_s(out, L"%ws\n", !new_files.empty() ? L"" : L" (NOT EXISTS!)");
+		fwprintf_s(out, L"%ls\n", !new_files.empty() ? L"" : L" (NOT EXISTS!)");
 
-		fwprintf_s(out, L" old files: %ws", old_files_pattern.c_str());
+		fwprintf_s(out, L" old files: %ls", old_files_pattern.c_str());
 		auto old_files = find_files(old_files_pattern.c_str());
-		fwprintf_s(out, L"%ws\n", !old_files.empty() ? L"" : L" (NOT EXISTS!)");
+		fwprintf_s(out, L"%ls\n", !old_files.empty() ? L"" : L" (NOT EXISTS!)");
 
 		fwprintf_s(out, L"\n");
 
@@ -201,23 +201,23 @@ int wmain(int argc, wchar_t* argv[])
 			}
 		}
 
-		fwprintf_s(out, L" legends: +: added, -: removed, *: changed\n");
+		fwprintf_s(out, L" legends: +: added, -: removed, *: changed, $: changed (original)\n");
 
 		diff_files(new_files, old_files);
 	} else {
-		fwprintf_s(out, L" new folder: %ws", new_files_pattern.c_str());
+		fwprintf_s(out, L" new folder: %ls", new_files_pattern.c_str());
 		auto new_components = find_files_wcs_ex(new_files_pattern.c_str(), L"*.pri");
-		fwprintf_s(out, L"%ws\n", !new_components.empty() ? L"" : L" (EMPTY!)");
+		fwprintf_s(out, L"%ls\n", !new_components.empty() ? L"" : L" (EMPTY!)");
 
-		fwprintf_s(out, L" old folder: %ws", old_files_pattern.c_str());
+		fwprintf_s(out, L" old folder: %ls", old_files_pattern.c_str());
 		auto old_components = find_files_wcs_ex(old_files_pattern.c_str(), L"*.pri");
-		fwprintf_s(out, L"%ws\n", !old_components.empty() ? L"" : L" (EMPTY!)");
+		fwprintf_s(out, L"%ls\n", !old_components.empty() ? L"" : L" (EMPTY!)");
 
 		fwprintf_s(out, L"\n");
 
 		if (new_components.empty() & old_components.empty()) return 0; // at least one of them must exists
 
-		fwprintf_s(out, L" legends: +: added, -: removed, *: changed\n");
+		fwprintf_s(out, L" legends: +: added, -: removed, *: changed, $: changed (original)\n");
 
 		const map<wstring, wstring> empty_files;
 		diff_maps(new_components, old_components,
@@ -226,7 +226,7 @@ int wmain(int argc, wchar_t* argv[])
 				wchar_t printed_component_prefix = L' ';
 				auto print_component_name = [&](const wchar_t prefix) {
 					if (!printed_component_name) {
-						fwprintf_s(out, L"\n %wc %ws (\n", prefix, component_name.c_str());
+						fwprintf_s(out, L"\n %lc %ls (\n", prefix, component_name.c_str());
 						printed_component_name = true;
 						printed_component_prefix = prefix;
 					}
@@ -236,7 +236,7 @@ int wmain(int argc, wchar_t* argv[])
 					[&]() { print_component_name(new_files ? old_files ? L'*' : L'+' : L'-'); });
 
 				if (printed_component_name)
-					fwprintf_s(out, L" %wc )\n", printed_component_prefix);
+					fwprintf_s(out, L" %lc )\n", printed_component_prefix);
 			}
 		);
 
