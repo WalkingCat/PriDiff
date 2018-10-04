@@ -10,6 +10,7 @@ enum diff_options {
 	diffNone = 0x0,
 	diffOld = 0x1,
 	diffNew = 0x2,
+	diffRec = 0x4,
 	diffWcs = 0x8,
 	diffOutput = 0x40000000,
 	diffHelp = 0x80000000,
@@ -19,6 +20,7 @@ const struct { const wchar_t* arg; const wchar_t* arg_alt; const wchar_t* params
 	{ L"?",		L"help",			nullptr,		L"show this help",						diffHelp },
 	{ L"n",		L"new",				L"<filename>",	L"specify new file(s)",					diffNew },
 	{ L"o",		L"old",				L"<filename>",	L"specify old file(s)",					diffOld },
+	{ L"r",		L"recursive",		nullptr,		L"search folder recursively",			diffRec },
 	{ nullptr,	L"wcs",				nullptr,		L"folder is Windows Component Store",	diffWcs },
 };
 
@@ -96,96 +98,25 @@ int wmain(int argc, wchar_t* argv[])
 		return 0;
 	}
 
-	auto diff_files = [&](const map<wstring, wstring>& new_files, const map<wstring, wstring>& old_files, const function<void()>& callback = function<void()>()) {
-		bool printed_previous_file_name = false;
-		diff_maps(new_files, old_files,
-			[&](const wstring& file_name, const wstring * new_file, const wstring * old_file) {
-				bool printed_file_name = false;
-				auto print_file_name = [&](const wchar_t prefix) {
-					if (!printed_file_name) {
-						if (callback) callback();
-						if (printed_previous_file_name) {
-							fwprintf_s(out, L"\n");
-						}
-						fwprintf_s(out, L"   %lc %ls\n", prefix, file_name.c_str());
-						printed_previous_file_name = printed_file_name = true;
-					}
-				};
-
-				if (new_file == nullptr) {
-					print_file_name('-');
-					return;
-				}
-
-				if (old_file == nullptr) {
-					print_file_name('+');
-				}
-
-				diff_maps(get_pri_resources(*new_file), (old_file != nullptr) ? get_pri_resources(*old_file) : map<wstring, pri_resource_t>(),
-					[&](const wstring& res_name, const pri_resource_t* new_res, const pri_resource_t* old_res) {
-						bool printed_res_name = false;
-						auto print_res_name = [&](const wchar_t prefix) {
-							if (!printed_res_name) {
-								print_file_name(L'*');
-								fwprintf_s(out, L"     %lc %ls\n", prefix, res_name.c_str());
-								printed_res_name = true;
-							}
-						};
-
-						if (new_res == nullptr) {
-							print_res_name('-');
-							return;
-						}
-
-						if (old_res == nullptr) {
-							print_res_name('+');
-						}
-
-						diff_maps(new_res->values, old_res ? old_res->values : map<wstring, wstring>(),
-							[&](const wstring& qualifier, const wstring* new_value, const wstring* old_value) {
-								auto print_res_value = [&](const wchar_t prefix, bool old = false) {
-									print_res_name(L'*');
-									auto value_text = old ? *old_value : *new_value;
-									if (!qualifier.empty()) {
-										value_text = L"[" + qualifier + L"]" + value_text;
-									}
-									fwprintf_s(out, L"       %lc %ls\n", prefix, value_text.c_str());
-								};
-
-								if (new_value == nullptr) {
-									print_res_value('-', true);
-									return;
-								}
-
-								if (old_value) {
-									if (*new_value != *old_value) {
-										print_res_value('*', false);
-										print_res_value('$', true);
-									}
-								} else {
-									print_res_value('+', false);
-								}
-							}
-						);
-					}
-				);
-			}
-		);
+	auto search_files = [&](bool is_new) -> map<wstring, map<wstring, wstring>> {
+		map<wstring, map<wstring, wstring>> ret;
+		const auto& files_pattern = is_new ? new_files_pattern : old_files_pattern;
+		fwprintf_s(out, L" %ls files: %ls", is_new ? L"new" : L"old", files_pattern.c_str());
+		if (((options & diffWcs) == diffWcs)) {
+			ret = find_files_wcs_ex(files_pattern, L"*.pri");
+		} else {
+			ret = find_files_ex(files_pattern, ((options & diffRec) == diffRec), L"*.pri");
+		}
+		fwprintf_s(out, L"%ls\n", !ret.empty() ? L"" : L" (EMPTY!)");
+		return ret;
 	};
 
-	if ((options& diffWcs) == 0) {
-		fwprintf_s(out, L" new files: %ls", new_files_pattern.c_str());
-		auto new_files = find_files(new_files_pattern.c_str());
-		fwprintf_s(out, L"%ls\n", !new_files.empty() ? L"" : L" (NOT EXISTS!)");
+	map<wstring, map<wstring, wstring>> new_file_groups = search_files(true), old_file_groups = search_files(false);
+	fwprintf_s(out, L"\n");
+	if (new_file_groups.empty() && old_file_groups.empty()) return 0;
 
-		fwprintf_s(out, L" old files: %ls", old_files_pattern.c_str());
-		auto old_files = find_files(old_files_pattern.c_str());
-		fwprintf_s(out, L"%ls\n", !old_files.empty() ? L"" : L" (NOT EXISTS!)");
-
-		fwprintf_s(out, L"\n");
-
-		if (new_files.empty() & old_files.empty()) return 0; // at least one of them must exists
-
+	if (((options & (diffWcs | diffRec)) == 0)) {
+		auto& new_files = new_file_groups[wstring()], &old_files = old_file_groups[wstring()];
 		if ((new_files.size() == 1) && (old_files.size() == 1)) {
 			// allows diff single files with different names
 			auto& new_file_name = new_files.begin()->first;
@@ -200,48 +131,99 @@ int wmain(int argc, wchar_t* argv[])
 				old_files[diff_file_names] = old_file;
 			}
 		}
-
-		fwprintf_s(out, L" legends: +: added, -: removed, *: changed, $: changed (original)\n");
-
-		diff_files(new_files, old_files);
-	} else {
-		fwprintf_s(out, L" new folder: %ls", new_files_pattern.c_str());
-		auto new_components = find_files_wcs_ex(new_files_pattern.c_str(), L"*.pri");
-		fwprintf_s(out, L"%ls\n", !new_components.empty() ? L"" : L" (EMPTY!)");
-
-		fwprintf_s(out, L" old folder: %ls", old_files_pattern.c_str());
-		auto old_components = find_files_wcs_ex(old_files_pattern.c_str(), L"*.pri");
-		fwprintf_s(out, L"%ls\n", !old_components.empty() ? L"" : L" (EMPTY!)");
-
-		fwprintf_s(out, L"\n");
-
-		if (new_components.empty() & old_components.empty()) return 0; // at least one of them must exists
-
-		fwprintf_s(out, L" legends: +: added, -: removed, *: changed, $: changed (original)\n");
-
-		const map<wstring, wstring> empty_files;
-		diff_maps(new_components, old_components,
-			[&](const wstring& component_name, const map<wstring, wstring>* new_files, const map<wstring, wstring>* old_files) {
-				bool printed_component_name = false;
-				wchar_t printed_component_prefix = L' ';
-				auto print_component_name = [&](const wchar_t prefix) {
-					if (!printed_component_name) {
-						fwprintf_s(out, L"\n %lc %ls (\n", prefix, component_name.c_str());
-						printed_component_name = true;
-						printed_component_prefix = prefix;
-					}
-				};
-
-				diff_files(new_files ? *new_files : empty_files, old_files ? *old_files : empty_files,
-					[&]() { print_component_name(new_files ? old_files ? L'*' : L'+' : L'-'); });
-
-				if (printed_component_name)
-					fwprintf_s(out, L" %lc )\n", printed_component_prefix);
-			}
-		);
-
-		fwprintf_s(out, L"\n");
 	}
+
+	fwprintf_s(out, L" legends: +: added, -: removed, *: changed, $: changed (original)\n");
+
+	const map<wstring, wstring> empty_files;
+	diff_maps(new_file_groups, old_file_groups,
+		[&](const wstring& group_name, const map<wstring, wstring>* new_files, const map<wstring, wstring>* old_files) {
+			bool printed_group_name = false;
+			wchar_t printed_group_prefix = L' ';
+			auto print_group_name = [&](const wchar_t prefix) {
+				if (!printed_group_name) {
+					fwprintf_s(out, L"\n %lc %ls (\n", prefix, group_name.c_str());
+					printed_group_name = true;
+					printed_group_prefix = prefix;
+				}
+			};
+
+			bool printed_previous_file_name = false;
+			diff_maps(new_files ? *new_files : empty_files, old_files ? *old_files : empty_files,
+				[&](const wstring& file_name, const wstring * new_file, const wstring * old_file) {
+					bool printed_file_name = false;
+					auto print_file_name = [&](const wchar_t prefix) {
+						if (!printed_file_name) {
+							print_group_name(new_files ? old_files ? L'*' : L'+' : L'-');
+							if (printed_previous_file_name) {
+								fwprintf_s(out, L"\n");
+							}
+							fwprintf_s(out, L"   %lc %ls\n", prefix, file_name.c_str());
+							printed_previous_file_name = printed_file_name = true;
+						}
+					};
+
+					if (new_file == nullptr) {
+						print_file_name('-');
+						return;
+					}
+
+					if (old_file == nullptr) {
+						print_file_name('+');
+					}
+
+					diff_maps(get_pri_resources(*new_file), (old_file != nullptr) ? get_pri_resources(*old_file) : map<wstring, pri_resource_t>(),
+						[&](const wstring& res_name, const pri_resource_t* new_res, const pri_resource_t* old_res) {
+							bool printed_res_name = false;
+							auto print_res_name = [&](const wchar_t prefix) {
+								if (!printed_res_name) {
+									print_file_name(L'*');
+									fwprintf_s(out, L"     %lc %ls\n", prefix, res_name.c_str());
+									printed_res_name = true;
+								}
+							};
+
+							if (new_res == nullptr) {
+								print_res_name('-');
+								return;
+							}
+
+							if (old_res == nullptr) {
+								print_res_name('+');
+							}
+
+							diff_maps(new_res->values, old_res ? old_res->values : map<wstring, wstring>(),
+								[&](const wstring& qualifier, const wstring* new_value, const wstring* old_value) {
+									auto print_res_value = [&](const wchar_t prefix, bool old = false) {
+										print_res_name(L'*');
+										auto value_text = old ? *old_value : *new_value;
+										if (!qualifier.empty()) {
+											value_text = L"[" + qualifier + L"]" + value_text;
+										}
+										fwprintf_s(out, L"       %lc %ls\n", prefix, value_text.c_str());
+									};
+
+									if (new_value == nullptr) {
+										print_res_value('-', true);
+										return;
+									}
+
+									if (old_value) {
+										if (*new_value != *old_value) {
+											print_res_value('*', false);
+											print_res_value('$', true);
+										}
+									} else {
+										print_res_value('+', false);
+									}
+								}
+							);
+						}
+					);
+				}
+			);
+		}
+	);
 
 	return 0;
 }
@@ -288,26 +270,26 @@ std::map<std::wstring, pri_resource_t> get_pri_resources(const wstring& pri_file
 							auto& data_items = pri_data.data_item_sections[candidate.type_1.data_item_section_index].data_items;
 							auto& data_item = data_items[candidate.type_1.data_item_index];
 							switch (candidate.value_type) {
-							case resource_value_type_t::AsciiPath:
-							case resource_value_type_t::AsciiString:
-								value_text = ansi2utf16(string((char*)data_item.data(), data_item.size()));
-								break;
-							case resource_value_type_t::Utf8Path:
-							case resource_value_type_t::Utf8String:
-								value_text = utf82utf16(string((char*)data_item.data(), data_item.size()));
-								break;
-							case resource_value_type_t::Path:
-							case resource_value_type_t::String:
-								value_text = wstring((wchar_t*)data_item.data(), data_item.size() / sizeof(wchar_t));
-								break;
-							case resource_value_type_t::EmbeddedData:
-								//TODO: calc sha1 hash
-								value_text = L"[EmbeddedData(Size=" + to_wstring(data_item.size()) + L")]";
-								break;
-							default:
-								value_text = L"[DataItem(" + to_wstring(candidate.type_1.data_item_section_index) +
-									L"-" + to_wstring(candidate.type_1.data_item_index) + L")]";
-								break;
+								case resource_value_type_t::AsciiPath:
+								case resource_value_type_t::AsciiString:
+									value_text = ansi2utf16(string((char*)data_item.data(), data_item.size()));
+									break;
+								case resource_value_type_t::Utf8Path:
+								case resource_value_type_t::Utf8String:
+									value_text = utf82utf16(string((char*)data_item.data(), data_item.size()));
+									break;
+								case resource_value_type_t::Path:
+								case resource_value_type_t::String:
+									value_text = wstring((wchar_t*)data_item.data(), data_item.size() / sizeof(wchar_t));
+									break;
+								case resource_value_type_t::EmbeddedData:
+									//TODO: calc sha1 hash
+									value_text = L"[EmbeddedData(Size=" + to_wstring(data_item.size()) + L")]";
+									break;
+								default:
+									value_text = L"[DataItem(" + to_wstring(candidate.type_1.data_item_section_index) +
+										L"-" + to_wstring(candidate.type_1.data_item_index) + L")]";
+									break;
 							}
 						} else {
 							value_text = L"[ExternalFile]";
@@ -317,7 +299,7 @@ std::map<std::wstring, pri_resource_t> get_pri_resources(const wstring& pri_file
 				}
 			}
 		}
-	} catch(...) {}
+	} catch (...) {}
 
 	return pri_resources;
 }
