@@ -6,46 +6,6 @@
 using namespace std;
 using namespace pri;
 
-enum diff_options {
-	diffNone = 0x0,
-	diffOld = 0x1,
-	diffNew = 0x2,
-	diffRec = 0x4,
-	diffWcs = 0x8,
-	diffOutput = 0x40000000,
-	diffHelp = 0x80000000,
-};
-
-const struct { const wchar_t* arg; const wchar_t* arg_alt; const wchar_t* params_desc; const wchar_t* description; const diff_options options; } cmd_options[] = {
-	{ L"?",		L"help",			nullptr,		L"show this help",						diffHelp },
-	{ L"n",		L"new",				L"<filename>",	L"specify new file(s)",					diffNew },
-	{ L"o",		L"old",				L"<filename>",	L"specify old file(s)",					diffOld },
-	{ L"r",		L"recursive",		nullptr,		L"search folder recursively",			diffRec },
-	{ nullptr,	L"wcs",				nullptr,		L"folder is Windows Component Store",	diffWcs },
-};
-
-void print_usage(FILE* out) {
-	fwprintf_s(out, L" Usage: pridiff [options]\n\n");
-	for (auto o = begin(cmd_options); o != end(cmd_options); ++o) {
-		if (o->arg != nullptr) fwprintf_s(out, L" -%ls", o->arg); else fwprintf_s(out, L" ");
-
-		int len = 0;
-		if (o->arg_alt != nullptr) {
-			len = wcslen(o->arg_alt);
-			fwprintf_s(out, L"\t--%ls", o->arg_alt);
-		} else fwprintf_s(out, L"\t");
-
-		if (len < 6) fwprintf_s(out, L"\t");
-
-		if (o->params_desc != nullptr) len += fwprintf_s(out, L" %ls", o->params_desc);
-
-		if (len < 14) fwprintf_s(out, L"\t");
-
-		fwprintf_s(out, L"\t: %ls\n", o->description);
-	}
-	fwprintf_s(out, L"\n");
-}
-
 struct pri_resource_t {
 	std::map<std::wstring, std::wstring> values;
 };
@@ -56,87 +16,23 @@ int wmain(int argc, wchar_t* argv[])
 {
 	prepare_unicode_output();
 
-	auto out = stdout;
-	int options = diffNone;
-	const wchar_t* err_arg = nullptr;
-	wstring new_files_pattern, old_files_pattern;
+	wprintf_s(L"\n PriDiff v0.2 https://github.com/WalkingCat/PriDiff\n\n");
 
-	fwprintf_s(out, L"\n PriDiff v0.2 https://github.com/WalkingCat/PriDiff\n\n");
+	const auto& params = init_diff_params(argc, argv);
 
-	for (int i = 1; i < argc; ++i) {
-		const wchar_t* arg = argv[i];
-		if ((arg[0] == L'-') || ((arg[0] == L'/'))) {
-			diff_options curent_option = diffNone;
-			if ((arg[0] == L'-') && (arg[1] == L'-')) {
-				for (auto o = begin(cmd_options); o != end(cmd_options); ++o) {
-					if ((o->arg_alt != nullptr) && (wcscmp(arg + 2, o->arg_alt) == 0)) { curent_option = o->options; }
-				}
-			} else {
-				for (auto o = begin(cmd_options); o != end(cmd_options); ++o) {
-					if ((o->arg != nullptr) && (wcscmp(arg + 1, o->arg) == 0)) { curent_option = o->options; }
-				}
-			}
-
-			bool valid = false;
-			if (curent_option != diffNone) {
-				valid = true;
-				if (curent_option == diffNew) {
-					if ((i + 1) < argc) new_files_pattern = argv[++i];
-					else valid = false;
-				} else if (curent_option == diffOld) {
-					if ((i + 1) < argc) old_files_pattern = argv[++i];
-					else valid = false;
-				} else options = (options | curent_option);
-			}
-			if (!valid && (err_arg == nullptr)) err_arg = arg;
-		} else { if (new_files_pattern.empty()) new_files_pattern = arg; else err_arg = arg; }
-	}
-
-	if ((new_files_pattern.empty() && old_files_pattern.empty()) || (err_arg != nullptr) || (options & diffHelp)) {
-		if (err_arg != nullptr) fwprintf_s(out, L"\tError in option: %ls\n\n", err_arg);
-		print_usage(out);
+	if (params.show_help || (!params.error.empty()) || (params.new_files_pattern.empty() && params.old_files_pattern.empty())) {
+		if (!params.error.empty()) {
+			printf_s("\t%ls\n\n", params.error.c_str());
+		}
+		if (params.show_help) print_cmdl_usage(L"resdiff", diff_cmdl::options, diff_cmdl::default_option);
 		return 0;
 	}
 
-	auto search_files = [&](bool is_new) -> map<wstring, map<wstring, wstring>> {
-		map<wstring, map<wstring, wstring>> ret;
-		const auto& files_pattern = is_new ? new_files_pattern : old_files_pattern;
-		fwprintf_s(out, L" %ls files: %ls", is_new ? L"new" : L"old", files_pattern.c_str());
-		if (((options & diffWcs) == diffWcs)) {
-			ret = find_files_wcs_ex(files_pattern, L"*.pri");
-		} else {
-			ret = find_files_ex(files_pattern, ((options & diffRec) == diffRec), L"*.pri");
-		}
-		fwprintf_s(out, L"%ls\n", !ret.empty() ? L"" : L" (EMPTY!)");
-		return ret;
-	};
-
-	map<wstring, map<wstring, wstring>> new_file_groups = search_files(true), old_file_groups = search_files(false);
-	fwprintf_s(out, L"\n");
-	if (new_file_groups.empty() && old_file_groups.empty()) return 0;
-
-	if (((options & (diffWcs | diffRec)) == 0)) {
-		auto& new_files = new_file_groups[wstring()], &old_files = old_file_groups[wstring()];
-		if ((new_files.size() == 1) && (old_files.size() == 1)) {
-			// allows diff single files with different names
-			auto& new_file_name = new_files.begin()->first;
-			auto& old_file_name = old_files.begin()->first;
-			if (new_file_name != old_file_name) {
-				auto diff_file_names = new_file_name + L" <=> " + old_file_name;
-				auto new_file = new_files.begin()->second;
-				new_files.clear();
-				new_files[diff_file_names] = new_file;
-				auto old_file = old_files.begin()->second;
-				old_files.clear();
-				old_files[diff_file_names] = old_file;
-			}
-		}
-	}
-
+	auto out = params.out;
 	fwprintf_s(out, L" legends: +: added, -: removed, *: changed, $: changed (original)\n");
 
 	const map<wstring, wstring> empty_files;
-	diff_maps(new_file_groups, old_file_groups,
+	diff_maps(params.new_file_groups, params.old_file_groups,
 		[&](const wstring& group_name, const map<wstring, wstring>* new_files, const map<wstring, wstring>* old_files) {
 			bool printed_group_name = false;
 			wchar_t printed_group_prefix = L' ';
@@ -272,15 +168,15 @@ std::map<std::wstring, pri_resource_t> get_pri_resources(const wstring& pri_file
 							switch (candidate.value_type) {
 								case resource_value_type_t::AsciiPath:
 								case resource_value_type_t::AsciiString:
-									value_text = ansi2utf16(string((char*)data_item.data(), data_item.size()));
+									value_text = ansi2utf16(string_view((const char*)data_item.data(), data_item.size()));
 									break;
 								case resource_value_type_t::Utf8Path:
 								case resource_value_type_t::Utf8String:
-									value_text = utf82utf16(string((char*)data_item.data(), data_item.size()));
+									value_text = utf82utf16(string_view((const char*)data_item.data(), data_item.size()));
 									break;
 								case resource_value_type_t::Path:
 								case resource_value_type_t::String:
-									value_text = wstring((wchar_t*)data_item.data(), data_item.size() / sizeof(wchar_t));
+									value_text = wstring((const wchar_t*)data_item.data(), data_item.size() / sizeof(wchar_t));
 									break;
 								case resource_value_type_t::EmbeddedData:
 									//TODO: calc sha1 hash
