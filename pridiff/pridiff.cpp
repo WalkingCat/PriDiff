@@ -29,7 +29,7 @@ int wmain(int argc, wchar_t* argv[])
 	}
 
 	auto out = params.out;
-	fwprintf_s(out, L" legends: +: added, -: removed, *: changed, $: changed (original)\n");
+	fwprintf_s(out, L"\n legends: +: added, -: removed, *: changed, $: changed (original)\n");
 
 	const map<wstring, wstring> empty_files;
 	diff_maps(params.new_file_groups, params.old_file_groups,

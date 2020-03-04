@@ -2,6 +2,7 @@
 #include "diff_commons.h"
 #include "find_files.h"
 #include "find_files_wcs.h"
+#include "str_utils.h"
 
 using namespace std;
 
@@ -41,10 +42,7 @@ diff_params init_diff_params(const options_data_t& options_data, const std::wstr
 	}
 	opt_it = options_data.find(&diff_cmdl::filter);
 	if (opt_it != options_data.end()) {
-		ret.path_filter = opt_it->second;
-		for (auto& c : ret.path_filter) {
-			c = std::tolower(c);
-		}
+		ret.path_filter = tolower(opt_it->second);
 	}
 	opt_it = options_data.find(&diff_cmdl::out_file);
 	if (opt_it != options_data.end()) {
